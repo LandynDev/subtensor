@@ -1265,6 +1265,65 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
+
+    /// Simulates swapping TAO for ALPHA without executing the swap.
+    /// Returns (alpha_out, tao_in, fee) for the given TAO amount.
+    ///
+    /// # Arguments
+    /// * `netuid` - The subnet ID
+    /// * `tao_amount` - Amount of TAO to simulate swapping
+    ///
+    /// # Returns
+    /// * `Result<(AlphaCurrency, TaoCurrency, TaoCurrency), DispatchError>` - (alpha_out, tao_consumed, fee)
+    pub fn sim_swap_tao_for_alpha(
+        netuid: NetUid,
+        tao_amount: TaoCurrency,
+    ) -> Result<(AlphaCurrency, TaoCurrency, TaoCurrency), DispatchError> {
+        let order = GetAlphaForTao::<T>::with_amount(tao_amount);
+        let result = T::SwapInterface::sim_swap(netuid.into(), order)?;
+        Ok((
+            result.amount_paid_out,
+            result.amount_paid_in,
+            result.fee_paid,
+        ))
+    }
+
+    /// Simulates swapping ALPHA for TAO without executing the swap.
+    /// Returns (tao_out, alpha_in, fee) for the given ALPHA amount.
+    ///
+    /// # Arguments
+    /// * `netuid` - The subnet ID
+    /// * `alpha_amount` - Amount of ALPHA to simulate swapping
+    ///
+    /// # Returns
+    /// * `Result<(TaoCurrency, AlphaCurrency, AlphaCurrency), DispatchError>` - (tao_out, alpha_consumed, fee)
+    pub fn sim_swap_alpha_for_tao(
+        netuid: NetUid,
+        alpha_amount: AlphaCurrency,
+    ) -> Result<(TaoCurrency, AlphaCurrency, AlphaCurrency), DispatchError> {
+        let order = GetTaoForAlpha::<T>::with_amount(alpha_amount);
+        let result = T::SwapInterface::sim_swap(netuid.into(), order)?;
+        Ok((
+            result.amount_paid_out,
+            result.amount_paid_in,
+            result.fee_paid,
+        ))
+    }
+
+    /// Returns the current alpha price for a subnet as a u64.
+    /// Price is scaled by 1e9 for precision (price_u64 / 1e9 = actual price).
+    ///
+    /// # Arguments
+    /// * `netuid` - The subnet ID
+    ///
+    /// # Returns
+    /// * `u64` - The current alpha price scaled by 1e9
+    pub fn get_current_alpha_price_u64(netuid: NetUid) -> u64 {
+        let price: U96F32 = T::SwapInterface::current_alpha_price(netuid.into());
+        price
+            .saturating_mul(U96F32::saturating_from_num(1_000_000_000u64))
+            .saturating_to_num()
+    }
 }
 
 ///////////////////////////////////////////

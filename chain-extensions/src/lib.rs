@@ -9,6 +9,7 @@ pub mod types;
 
 use crate::types::{FunctionId, Output};
 use codec::{Decode, Encode, MaxEncodedLen};
+use subtensor_runtime_common::Currency;
 use frame_support::{DebugNoBound, traits::Get};
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
@@ -97,15 +98,18 @@ where
                     .read_as()
                     .map_err(|_| DispatchError::Other("Failed to decode input parameters"))?;
 
-                let call_result = pallet_subtensor::Pallet::<T>::add_stake(
-                    RawOrigin::Signed(env.caller()).into(),
-                    hotkey,
+                let result = pallet_subtensor::Pallet::<T>::do_add_stake_internal(
+                    &env.caller(),
+                    &hotkey,
                     netuid,
                     amount_staked,
                 );
 
-                match call_result {
-                    Ok(_) => Ok(RetVal::Converging(Output::Success as u32)),
+                match result {
+                    Ok(alpha_received) => {
+                        env.write_output(&alpha_received.encode())?;
+                        Ok(RetVal::Converging(Output::Success as u32))
+                    }
                     Err(e) => {
                         let error_code = Output::from(e) as u32;
                         Ok(RetVal::Converging(error_code))
@@ -123,15 +127,18 @@ where
                     .read_as()
                     .map_err(|_| DispatchError::Other("Failed to decode input parameters"))?;
 
-                let call_result = pallet_subtensor::Pallet::<T>::remove_stake(
-                    RawOrigin::Signed(env.caller()).into(),
-                    hotkey,
+                let result = pallet_subtensor::Pallet::<T>::do_remove_stake_internal(
+                    &env.caller(),
+                    &hotkey,
                     netuid,
                     amount_unstaked,
                 );
 
-                match call_result {
-                    Ok(_) => Ok(RetVal::Converging(Output::Success as u32)),
+                match result {
+                    Ok(tao_received) => {
+                        env.write_output(&tao_received.encode())?;
+                        Ok(RetVal::Converging(Output::Success as u32))
+                    }
                     Err(e) => {
                         let error_code = Output::from(e) as u32;
                         Ok(RetVal::Converging(error_code))
@@ -149,13 +156,16 @@ where
                     .read_as()
                     .map_err(|_| DispatchError::Other("Failed to decode input parameters"))?;
 
-                let call_result = pallet_subtensor::Pallet::<T>::unstake_all(
-                    RawOrigin::Signed(env.caller()).into(),
-                    hotkey,
+                let result = pallet_subtensor::Pallet::<T>::do_unstake_all_internal(
+                    &env.caller(),
+                    &hotkey,
                 );
 
-                match call_result {
-                    Ok(_) => Ok(RetVal::Converging(Output::Success as u32)),
+                match result {
+                    Ok(total_tao_received) => {
+                        env.write_output(&total_tao_received.encode())?;
+                        Ok(RetVal::Converging(Output::Success as u32))
+                    }
                     Err(e) => {
                         let error_code = Output::from(e) as u32;
                         Ok(RetVal::Converging(error_code))
@@ -173,13 +183,16 @@ where
                     .read_as()
                     .map_err(|_| DispatchError::Other("Failed to decode input parameters"))?;
 
-                let call_result = pallet_subtensor::Pallet::<T>::unstake_all_alpha(
-                    RawOrigin::Signed(env.caller()).into(),
-                    hotkey,
+                let result = pallet_subtensor::Pallet::<T>::do_unstake_all_alpha_internal(
+                    &env.caller(),
+                    &hotkey,
                 );
 
-                match call_result {
-                    Ok(_) => Ok(RetVal::Converging(Output::Success as u32)),
+                match result {
+                    Ok(total_tao_converted) => {
+                        env.write_output(&total_tao_converted.encode())?;
+                        Ok(RetVal::Converging(Output::Success as u32))
+                    }
                     Err(e) => {
                         let error_code = Output::from(e) as u32;
                         Ok(RetVal::Converging(error_code))
@@ -303,17 +316,20 @@ where
                     .read_as()
                     .map_err(|_| DispatchError::Other("Failed to decode input parameters"))?;
 
-                let call_result = pallet_subtensor::Pallet::<T>::add_stake_limit(
-                    RawOrigin::Signed(env.caller()).into(),
-                    hotkey,
+                let result = pallet_subtensor::Pallet::<T>::do_add_stake_limit_internal(
+                    &env.caller(),
+                    &hotkey,
                     netuid,
                     amount_staked,
                     limit_price,
                     allow_partial,
                 );
 
-                match call_result {
-                    Ok(_) => Ok(RetVal::Converging(Output::Success as u32)),
+                match result {
+                    Ok(alpha_received) => {
+                        env.write_output(&alpha_received.encode())?;
+                        Ok(RetVal::Converging(Output::Success as u32))
+                    }
                     Err(e) => {
                         let error_code = Output::from(e) as u32;
                         Ok(RetVal::Converging(error_code))
@@ -337,17 +353,20 @@ where
                     .read_as()
                     .map_err(|_| DispatchError::Other("Failed to decode input parameters"))?;
 
-                let call_result = pallet_subtensor::Pallet::<T>::remove_stake_limit(
-                    RawOrigin::Signed(env.caller()).into(),
-                    hotkey,
+                let result = pallet_subtensor::Pallet::<T>::do_remove_stake_limit_internal(
+                    &env.caller(),
+                    &hotkey,
                     netuid,
                     amount_unstaked,
                     limit_price,
                     allow_partial,
                 );
 
-                match call_result {
-                    Ok(_) => Ok(RetVal::Converging(Output::Success as u32)),
+                match result {
+                    Ok(tao_received) => {
+                        env.write_output(&tao_received.encode())?;
+                        Ok(RetVal::Converging(Output::Success as u32))
+                    }
                     Err(e) => {
                         let error_code = Output::from(e) as u32;
                         Ok(RetVal::Converging(error_code))
@@ -505,6 +524,80 @@ where
                         Ok(RetVal::Converging(error_code))
                     }
                 }
+            }
+            FunctionId::SimSwapTaoForAlphaV1 => {
+                let weight = Weight::from_parts(50_000_000, 0)
+                    .saturating_add(T::DbWeight::get().reads(6_u64));
+                env.charge_weight(weight)?;
+
+                let (netuid, tao_amount): (NetUid, u64) = env
+                    .read_as()
+                    .map_err(|_| DispatchError::Other("Failed to decode input parameters"))?;
+
+                let result = pallet_subtensor::Pallet::<T>::sim_swap_tao_for_alpha(
+                    netuid,
+                    TaoCurrency::from(tao_amount),
+                );
+
+                match result {
+                    Ok((alpha_out, tao_in, fee)) => {
+                        let output = (
+                            alpha_out.to_u64(),
+                            tao_in.to_u64(),
+                            fee.to_u64(),
+                        );
+                        env.write_output(&output.encode())?;
+                        Ok(RetVal::Converging(Output::Success as u32))
+                    }
+                    Err(e) => {
+                        let error_code = Output::from(e) as u32;
+                        Ok(RetVal::Converging(error_code))
+                    }
+                }
+            }
+            FunctionId::SimSwapAlphaForTaoV1 => {
+                let weight = Weight::from_parts(50_000_000, 0)
+                    .saturating_add(T::DbWeight::get().reads(6_u64));
+                env.charge_weight(weight)?;
+
+                let (netuid, alpha_amount): (NetUid, u64) = env
+                    .read_as()
+                    .map_err(|_| DispatchError::Other("Failed to decode input parameters"))?;
+
+                let result = pallet_subtensor::Pallet::<T>::sim_swap_alpha_for_tao(
+                    netuid,
+                    AlphaCurrency::from(alpha_amount),
+                );
+
+                match result {
+                    Ok((tao_out, alpha_in, fee)) => {
+                        let output = (
+                            tao_out.to_u64(),
+                            alpha_in.to_u64(),
+                            fee.to_u64(),
+                        );
+                        env.write_output(&output.encode())?;
+                        Ok(RetVal::Converging(Output::Success as u32))
+                    }
+                    Err(e) => {
+                        let error_code = Output::from(e) as u32;
+                        Ok(RetVal::Converging(error_code))
+                    }
+                }
+            }
+            FunctionId::GetCurrentAlphaPriceV1 => {
+                let weight = Weight::from_parts(10_000_000, 0)
+                    .saturating_add(T::DbWeight::get().reads(2_u64));
+                env.charge_weight(weight)?;
+
+                let netuid: NetUid = env
+                    .read_as()
+                    .map_err(|_| DispatchError::Other("Failed to decode input parameters"))?;
+
+                let price_u64 = pallet_subtensor::Pallet::<T>::get_current_alpha_price_u64(netuid);
+
+                env.write_output(&price_u64.encode())?;
+                Ok(RetVal::Converging(Output::Success as u32))
             }
         }
     }

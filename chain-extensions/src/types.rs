@@ -20,6 +20,9 @@ pub enum FunctionId {
     SetColdkeyAutoStakeHotkeyV1 = 12,
     AddProxyV1 = 13,
     RemoveProxyV1 = 14,
+    SimSwapTaoForAlphaV1 = 15,
+    SimSwapAlphaForTaoV1 = 16,
+    GetCurrentAlphaPriceV1 = 17,
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Encode, Decode, Debug)]
